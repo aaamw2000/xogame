@@ -15,6 +15,8 @@ type Game struct {
 }
 type state int
 
+// this is another comment to test out branching
+
 const (
 	XWIN       state = iota
 	OWIN       state = iota
