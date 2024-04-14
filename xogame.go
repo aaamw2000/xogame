@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"github.com/manifoldco/promptui"
 )
 
 type Game struct {
@@ -31,7 +32,7 @@ type board struct {
 
 type move struct {
 	player bool
-	square string
+	square int
 }
 
 // exported functions
@@ -58,7 +59,7 @@ func (game *Game) Play() (state, error) {
 		if game.checkStatus() != INPROGRESS {
 			return game.checkStatus(), nil
 		}
-		move, err := game.getMove()
+		move, err := game.betterGetMove()
 		if err != nil {
 			return INPROGRESS, err
 		}
@@ -98,24 +99,30 @@ Our rules are simple:
 // MakeMove validates player moves and makes them
 func (game *Game) MakeMove(move move) error {
 	// check if it is the correct turn for the player making the move
-	if err := move.correctTurnForPlayer(game); err != nil {
+	// if err := move.correctTurnForPlayer(game); err != nil {
+		// return err
+	// }
+	// check if the move if valid
+	// if valid := move.isValidMove(); !valid {
+		// msg := fmt.Sprintf("%v is not a valid move. Valid moves are from 0 to 9", move.square)
+		// return errors.New(msg)
+	// }
+	// parse move
+	// actualMove, err := move.getActualMove()
+	// if err != nil {
+		// msg := fmt.Sprintf("Your move: %v is not convertable to a board move. Double check your move.", move.square)
+		// return errors.New(msg)
+	// }
+	actualMove, err := game.betterGetMove()
+	if err != nil {
 		return err
 	}
-	// check if the move if valid
-	if valid := move.isValidMove(); !valid {
-		msg := fmt.Sprintf("%v is not a valid move. Valid moves are from 0 to 9", move.square)
-		return errors.New(msg)
-	}
-	// parse move
-	actualMove, err := move.getActualMove()
-	if err != nil {
-		msg := fmt.Sprintf("Your move: %v is not convertable to a board move. Double check your move.", move.square)
-		return errors.New(msg)
-	}
+	moveInt := actualMove.square - 1
+
 	if game.turn { // make the move
-		game.gameboard.boardSlice[actualMove] = game.gameboard.xchar
+		game.gameboard.boardSlice[moveInt] = game.gameboard.xchar
 	} else {
-		game.gameboard.boardSlice[actualMove] = game.gameboard.ochar
+		game.gameboard.boardSlice[moveInt] = game.gameboard.ochar
 	}
 	game.turn = !game.turn // switch players
 
@@ -128,15 +135,33 @@ func (game *Game) checkStatus() state {
 	return game.gameboard.gamestate
 }
 
-func (game *Game) getMove() (move, error) {
-	prompt := fmt.Sprintf("%s>> ", game.getPlayer())
-	fmt.Print(prompt)
-	var sqr string
-	_, err := fmt.Scanln(&sqr)
-	if err != nil {
-		return move{}, errors.New("Didn't get move")
+func (game *Game) betterGetMove() (move, error) {
+	validate := func(input string) error {
+		parsedInt, err := strconv.ParseInt(input, 10, 8)
+		if err != nil {
+			return errors.New("Invalid move character!")
+		}
+		if parsedInt < 1 || parsedInt > 9 {
+			return errors.New("Invalid move number!")
+		}
+		return nil
 	}
-	return move{player: game.turn, square: sqr}, nil
+
+	prompt := promptui.Prompt{
+		Label: "Move [1-9]",
+		Validate: validate,
+	}
+
+	moveStr, err := prompt.Run()
+
+	if err != nil {
+		err := errors.New("Failed to get input")
+		return move{}, err
+	}
+
+	moveInt, _ := strconv.Atoi(moveStr)
+
+	return move{player: game.turn, square: moveInt}, nil
 }
 
 func (game *Game) getPlayer() string {
@@ -197,35 +222,4 @@ func numberOfLegalMoves(board *board) int {
 		}
 	}
 	return num
-}
-
-func (move move) getActualMove() (int, error) {
-	intmove, err := strconv.Atoi(move.square)
-	intmove--
-	return intmove, err
-}
-
-func (move move) isValidMove() bool {
-	re := regexp.MustCompile(`[1-9]`)
-	if len(move.square) == 1 && re.MatchString(move.square) {
-		return true
-	} else {
-		return false
-	}
-}
-
-func (move move) correctTurnForPlayer(game *Game) error {
-	if game.turn { // player x turn
-		if !move.player { // player o trying to make a move
-			msg := fmt.Sprintf("Player %s's turn, not yours", game.playerXName)
-			return errors.New(msg)
-		}
-	}
-	if !game.turn { // player o turn
-		if move.player { // player x trying to make a move
-			msg := fmt.Sprintf("Player %s's turn, not yours", game.playerOName)
-			return errors.New(msg)
-		}
-	}
-	return nil
 }
