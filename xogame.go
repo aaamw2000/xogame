@@ -59,11 +59,7 @@ func (game *Game) Play() (state, error) {
 		if game.checkStatus() != INPROGRESS {
 			return game.checkStatus(), nil
 		}
-		move, err := game.betterGetMove()
-		if err != nil {
-			return INPROGRESS, err
-		}
-		game.MakeMove(move)
+		game.MakeMove()
 	}
 }
 
@@ -97,22 +93,7 @@ Our rules are simple:
 }
 
 // MakeMove validates player moves and makes them
-func (game *Game) MakeMove(move move) error {
-	// check if it is the correct turn for the player making the move
-	// if err := move.correctTurnForPlayer(game); err != nil {
-		// return err
-	// }
-	// check if the move if valid
-	// if valid := move.isValidMove(); !valid {
-		// msg := fmt.Sprintf("%v is not a valid move. Valid moves are from 0 to 9", move.square)
-		// return errors.New(msg)
-	// }
-	// parse move
-	// actualMove, err := move.getActualMove()
-	// if err != nil {
-		// msg := fmt.Sprintf("Your move: %v is not convertable to a board move. Double check your move.", move.square)
-		// return errors.New(msg)
-	// }
+func (game *Game) MakeMove() error {
 	actualMove, err := game.betterGetMove()
 	if err != nil {
 		return err
@@ -135,11 +116,18 @@ func (game *Game) checkStatus() state {
 	return game.gameboard.gamestate
 }
 
+func (gameboard *board) isEmptySquare(sqr int) bool {
+	return gameboard.boardSlice[sqr -1] != "X" && gameboard.boardSlice[sqr -1] != "O"
+}
+
 func (game *Game) betterGetMove() (move, error) {
 	validate := func(input string) error {
 		parsedInt, err := strconv.ParseInt(input, 10, 8)
 		if err != nil {
 			return errors.New("Invalid move character!")
+		}
+		if !game.gameboard.isEmptySquare(int(parsedInt)) {
+			return errors.New("Invalid move; square occupied.")
 		}
 		if parsedInt < 1 || parsedInt > 9 {
 			return errors.New("Invalid move number!")
