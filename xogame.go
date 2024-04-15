@@ -153,11 +153,7 @@ func (game *Game) checkStatus() state {
 }
 
 func (gameboard *board) isEmptySquare(sqr int) bool {
-	if sqr != 0 {
-		return gameboard.boardSlice[sqr-1] != "X" && gameboard.boardSlice[sqr-1] != "O"
-	} else {
-		return false // shouldn't handle that this way :( 
-	}
+	return gameboard.boardSlice[sqr-1] != "X" && gameboard.boardSlice[sqr-1] != "O"
 }
 
 func (game *Game) setPrompt() string {
@@ -174,11 +170,11 @@ func (game *Game) betterGetMove() (move, error) {
 		if err != nil {
 			return errors.New("Invalid move character!")
 		}
-		if !game.gameboard.isEmptySquare(int(parsedInt)) {
-			return errors.New("Invalid move; square occupied.")
-		}
 		if parsedInt < 1 || parsedInt > 9 {
 			return errors.New("Invalid move number!")
+		}
+		if !game.gameboard.isEmptySquare(int(parsedInt)) {
+			return errors.New("Invalid move; square occupied.")
 		}
 		return nil
 	}
