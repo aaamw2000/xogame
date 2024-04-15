@@ -3,9 +3,13 @@ package xogame
 import (
 	"errors"
 	"fmt"
+	"os"
 	"regexp"
 	"strconv"
+
+	"github.com/charmbracelet/lipgloss"
 	"github.com/manifoldco/promptui"
+	"golang.org/x/term"
 )
 
 type Game struct {
@@ -38,7 +42,7 @@ type move struct {
 // exported functions
 // NewGame initializes the Game struct and returns a pointer to that new game struct.
 // It also sets up the initial text and welcomes the player
-func NewGame() *Game {
+func NewGame() (*Game, error) {
 	game := Game{
 		gameboard: board{
 			boardSlice: []string{"1", "2", "3", "4", "5", "6", "7", "8", "9"},
@@ -50,8 +54,11 @@ func NewGame() *Game {
 		playerOName: "playero",
 		turn:        true,
 	}
-	game.setup()
-	return &game
+	err := game.setup()
+	if err != nil {
+		return nil, err
+	}
+	return &game, nil
 }
 
 func (game *Game) Play() (state, error) {
@@ -75,21 +82,50 @@ func Congrat(game *Game, status state) {
 }
 
 // setup sets up a new game by initializing player names and priting initial help info
-func (game *Game) setup() {
-	fmt.Println(`Welcome to TicTacGo!
-Our rules are simple:
-	- Each square on the board is numbered from 1 to 9.
-	- When it is your turn, you enter the number of the square you want to play at
-	- That's it! You expected more! Silly! Haha.
-	`)
+func (game *Game) setup() error {
+	welcome := "Welcome to TicTacGo!\nOur rules are simple:"
+	rule0 := "- Each square on the board is numbered from 1 to 9."
+	rule1 := "- When it is your turn, you enter the number of the square you want to play at."
+	rule2 := "- That's it! Those are all the rules. You expected more? Silly! Haha. Have fun playing!"
+
+	width, height, err := term.GetSize(int(os.Stdout.Fd()))
+	if err != nil {
+		return errors.New("Couldn't get terminal size.")
+	}
+	welcomeStyle := lipgloss.NewStyle().
+		Bold(true).
+		Width(width - 2).
+		Height(height - 2000).
+		Align(lipgloss.Center).
+		Background(lipgloss.Color("#7D56F4")).
+		Padding(2).
+		BorderStyle(lipgloss.Border{
+			Top:         "._.:*:",
+			Bottom:      "._.:*:",
+			Left:        "|*",
+			Right:       "|*",
+			TopLeft:     "*",
+			TopRight:    "*",
+			BottomLeft:  "*",
+			BottomRight: "*",
+		})
+	welcomeMsg := lipgloss.JoinVertical(lipgloss.Left, welcome, rule0, rule1, rule2)
+
+	fmt.Println(welcomeStyle.Render(welcomeMsg))
+	style := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("#FAFAFA")).
+		Background(lipgloss.Color("#7D56F4"))
+
 	var playerx, playero string
-	fmt.Print("Enter playerX name: ")
+	fmt.Print(style.Render("Enter PlayerX name:") + " ")
 	fmt.Scanln(&playerx)
 	game.playerXName = playerx
-	fmt.Print("Enter PlayerO name: ")
+	fmt.Print(style.Render("Enter PlayerO name:") + " ")
 	fmt.Scanln(&playero)
 	game.playerOName = playero
 	drawBoard(&game.gameboard)
+	return nil
 }
 
 // MakeMove validates player moves and makes them
@@ -117,7 +153,19 @@ func (game *Game) checkStatus() state {
 }
 
 func (gameboard *board) isEmptySquare(sqr int) bool {
-	return gameboard.boardSlice[sqr -1] != "X" && gameboard.boardSlice[sqr -1] != "O"
+	if sqr != 0 {
+		return gameboard.boardSlice[sqr-1] != "X" && gameboard.boardSlice[sqr-1] != "O"
+	} else {
+		return false // shouldn't handle that this way :( 
+	}
+}
+
+func (game *Game) setPrompt() string {
+	if game.turn {
+		return fmt.Sprintf("(%s) Move [1-9]", game.playerXName)
+	} else {
+		return fmt.Sprintf("(%s) Move [1-9]", game.playerOName)
+	}
 }
 
 func (game *Game) betterGetMove() (move, error) {
@@ -136,12 +184,11 @@ func (game *Game) betterGetMove() (move, error) {
 	}
 
 	prompt := promptui.Prompt{
-		Label: "Move [1-9]",
+		Label:    game.setPrompt(),
 		Validate: validate,
 	}
 
 	moveStr, err := prompt.Run()
-
 	if err != nil {
 		err := errors.New("Failed to get input")
 		return move{}, err
