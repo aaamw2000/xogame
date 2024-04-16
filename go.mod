@@ -1,4 +1,4 @@
-module xogame
+module github.com/aaamw2000/xogame
 
 go 1.21.8
 
