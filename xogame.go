@@ -42,6 +42,25 @@ type move struct {
 // exported functions
 // NewGame initializes the Game struct and returns a pointer to that new game struct.
 // It also sets up the initial text and welcomes the player
+func NewParamGame(charx string, charo string) (*Game, error) {
+	game := Game{
+		gameboard: board{
+			boardSlice: []string{"1", "2", "3", "4", "5", "6", "7", "8", "9"},
+			gamestate:  INPROGRESS,
+			xchar:      charx,
+			ochar:      charo,
+		},
+		playerXName: "playerx",
+		playerOName: "playero",
+		turn:        true,
+	}
+	err := game.setup()
+	if err != nil {
+		return nil, err
+	}
+	return &game, nil
+}
+
 func NewGame() (*Game, error) {
 	game := Game{
 		gameboard: board{
